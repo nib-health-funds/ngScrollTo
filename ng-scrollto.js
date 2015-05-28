@@ -18,76 +18,82 @@
 //   </div>
 // </div>
 
-angular.module('ngScrollTo', []);
+angular.module('ngScrollTo', [])
+    .directive('scrollTo', ['scrollToService', function(scrollToService){
+      return {
+        restrict : "A",
+        compile : function(){
+          return function(scope, element, attr) {
+            element.bind("click", function(){
+              //Check the if condition, break if false
+              if(attr.scrollToIf && !scope.$eval(attr.scrollToIf)){
+                return;
+              }
+              scrollToService.element(attr.scrollTo, attr.offset);
+            });
+          };
+        }
+      };
+    }])
+    .service('scrollToService', ['$window', 'ngScrollToOptions', function($window, ngScrollToOptions) {
 
-angular.module('ngScrollTo')
-  .directive('scrollTo', ['ScrollTo', function(ScrollTo){
-    return {
-      restrict : "AC",
-      compile : function(){
-        
-        return function(scope, element, attr) {
-          element.bind("click", function(event){
-            ScrollTo.idOrName(attr.scrollTo, attr.offset);
-          });
-        };
-      }
-    };
-  }])
-  .service('ScrollTo', ['$window', 'ngScrollToOptions', function($window, ngScrollToOptions) {
+      this.element = function (querySelector, offset, focus) {//find element with the given id or name and scroll to the first element it finds
 
-    this.idOrName = function (idOrName, offset, focus) {//find element with the given id or name and scroll to the first element it finds
-        var document = $window.document;
-        
-        if(!idOrName) {//move to top if idOrName is not provided
+        if(!querySelector) {//move to top if a selector is not provided
           $window.scrollTo(0, 0);
         }
 
         if(focus === undefined) { //set default action to focus element
-            focus = true;
+          focus = true;
         }
 
-        //check if an element can be found with id attribute
-        var el = document.getElementById(idOrName);
-        if(!el) {//check if an element can be found with name attribute if there is no such id
-          el = document.getElementsByName(idOrName);
+        // check if an element can be found with the selector
+        var el = $(querySelector);
+        if(el && el.length)
+          el = el[0];
+        else
+          el = null;
 
-          if(el && el.length)
-            el = el[0];
-          else
-            el = null;
-        }
-
-        if(el) { //if an element is found, scroll to the element
-          if (focus) {
+        if(el) { //if an element is found and not in viewport, scroll to the element
+          // check if element is in view
+          var rect = el.getBoundingClientRect();
+          var inViewPort = (
+          rect.top >= 0 &&
+          rect.left >= 0 &&
+          rect.bottom <= ($window.innerHeight || $window.document.documentElement.clientHeight) && /*or $(window).height() */
+          rect.right <= ($window.innerWidth || $window.document.documentElement.clientWidth) /*or $(window).width() */
+          );
+          if (!inViewPort) {
+            if (focus) {
               el.focus();
+            }
+
+            ngScrollToOptions.handler(el, offset);
           }
 
-          ngScrollToOptions.handler(el, offset);
         }
-        
+
         //otherwise, ignore
       }
 
-  }])
-  .provider("ngScrollToOptions", function() {
-    this.options = {
-      handler : function(el, offset) {
-        if (offset) {
-          var top = $(el).offset().top - offset;
-          window.scrollTo(0, top);
+    }])
+    .provider("ngScrollToOptions", function() {
+      this.options = {
+        handler : function(el, offset) {
+          if (offset) {
+            var top = $(el).offset().top - offset;
+            window.scrollTo(0, top);
+          }
+          else {
+            el.scrollIntoView();
+          }
         }
-        else {
-          el.scrollIntoView();
-        }
-      }
-    };
-    this.$get = function() {
-      return this.options;
-    };
-    this.extend = function(options) {
-      this.options = angular.extend(this.options, options);
-    };
-  });
-
+      };
+      this.$get = function() {
+        return this.options;
+      };
+      this.extend = function(options) {
+        this.options = angular.extend(this.options, options);
+      };
+    });
 
