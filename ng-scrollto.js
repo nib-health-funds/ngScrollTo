@@ -1,41 +1,22 @@
-// Version 0.0.5
-// AngularJS simple hash-tag scroll alternative
-// this directive uses click event to scroll to the target element
-//
-// <div ng-app="app">
-//   <div ng-controller="myCtrl">
-//     <a scroll-to="section1">Section 1</a>
-//   </div>
-//   ...
-//   <div id="section1">
-//      <h2>Section1</h2>
-//      <a scroll-to="">Back to Top</a>
-//   </div>
-//  ...
-//   <div id="section1">
-//      <h2>Section1</h2>
-//      <a scroll-to="section1" offset="60">Section 1 with 60px offset</a>
-//   </div>
-// </div>
-
-angular.module('ngScrollTo', [])
-    .directive('scrollTo', ['scrollToService', function(scrollToService){
+// Custom version of https://github.com/iameugenejo/ngScrollTo
+angular.module('nib.scrollTo', [])
+    .directive('nibScrollTo', ['scrollTo', function(scrollTo){
       return {
         restrict : "A",
         compile : function(){
           return function(scope, element, attr) {
             element.bind("click", function(){
               //Check the if condition, break if false
-              if(attr.scrollToIf && !scope.$eval(attr.scrollToIf)){
+              if(attr.nibScrollToIf && !scope.$eval(attr.nibScrollToIf)){
                 return;
               }
-              scrollToService.element(attr.scrollTo, attr.offset);
+              scrollTo.element(attr.nibScrollTo, attr.offset);
             });
           };
         }
       };
     }])
-    .service('scrollToService', ['$window', 'ngScrollToOptions', function($window, ngScrollToOptions) {
+    .service('scrollTo', ['$window', 'ngScrollTo', function($window, ngScrollTo) {
 
       this.element = function (querySelector, offset, focus) {//find element with the given id or name and scroll to the first element it finds
 
@@ -48,27 +29,22 @@ angular.module('ngScrollTo', [])
         }
 
         // check if an element can be found with the selector
-        var el = $(querySelector);
-        if(el && el.length)
-          el = el[0];
-        else
-          el = null;
-
+        var el = $window.document.querySelector(querySelector);
         if(el) { //if an element is found and not in viewport, scroll to the element
           // check if element is in view
           var rect = el.getBoundingClientRect();
           var inViewPort = (
-          rect.top >= 0 &&
-          rect.left >= 0 &&
-          rect.bottom <= ($window.innerHeight || $window.document.documentElement.clientHeight) && /*or $(window).height() */
-          rect.right <= ($window.innerWidth || $window.document.documentElement.clientWidth) /*or $(window).width() */
+            rect.top >= 0 &&
+            rect.left >= 0 &&
+            rect.bottom <= ($window.innerHeight || $window.document.documentElement.clientHeight) && /*or $(window).height() */
+            rect.right <= ($window.innerWidth || $window.document.documentElement.clientWidth) /*or $(window).width() */
           );
           if (!inViewPort) {
             if (focus) {
               el.focus();
             }
 
-            ngScrollToOptions.handler(el, offset);
+            ngScrollTo(el, offset);
           }
 
         }
@@ -77,23 +53,40 @@ angular.module('ngScrollTo', [])
       }
 
     }])
-    .provider("ngScrollToOptions", function() {
-      this.options = {
-        handler : function(el, offset) {
-          if (offset) {
-            var top = $(el).offset().top - offset;
-            window.scrollTo(0, top);
+    .factory("ngScrollTo", ['$timeout', function($timeout) {
+      return function(el, scrollOffset, duration){
+        // set a timeout so that digest cycle can run before attempting to scroll
+        $timeout(function(){
+          duration = duration || 600;
+          scrollOffset = scrollOffset == null ? 0 : scrollOffset;
+          el = el.nodeName ? el : document.querySelector(el);
+          if(el){
+            var easing = function(n){
+              n *= 2;
+              if (n < 1) return 0.5 * n * n;
+              return - 0.5 * (--n * (n - 2) - 1);
+            };
+            var stop = false;
+            var start = Date.now();
+            var html = document.getElementsByTagName('html')[0];
+            var fromY = document.body.scrollTop || html.scrollTop;
+            var toY = fromY + el.getBoundingClientRect().top + scrollOffset;
+
+            var updatePosition = function(){
+              var now = Date.now();
+              if (now - start >= duration) stop = true;
+              var p = (now - start) / duration;
+              var tick = Math.round(fromY + (toY - fromY) * easing(p));
+              document.body.scrollTop = tick;
+              html.scrollTop = tick;
+              $timeout(function() {
+                if(stop) return;
+                updatePosition();
+              }, 10);
+            };
+            updatePosition();
           }
-          else {
-            el.scrollIntoView();
-          }
-        }
-      };
-      this.$get = function() {
-        return this.options;
-      };
-      this.extend = function(options) {
-        this.options = angular.extend(this.options, options);
-      };
-    });
+        }, 10);
+      }
+    }]);
 
