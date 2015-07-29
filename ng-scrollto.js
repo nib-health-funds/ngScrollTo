@@ -81,4 +81,7 @@ angular.module('nib.scrollTo', [])
         }, 10);
       }
     }]);
-
+	
+	if(module && module.exports){
+		module.exports = 'nib.scrollto';
+	}
