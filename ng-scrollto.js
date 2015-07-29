@@ -18,14 +18,10 @@ angular.module('nib.scrollTo', [])
     }])
     .service('scrollTo', ['$window', 'ngScrollTo', function($window, ngScrollTo) {
 
-      this.element = function (querySelector, offset, focus) {//find element with the given id or name and scroll to the first element it finds
+      this.element = function (querySelector, offset) {//find element with the given id or name and scroll to the first element it finds
 
         if(!querySelector) {//move to top if a selector is not provided
-          $window.scrollTo(0, 0);
-        }
-
-        if(focus === undefined) { //set default action to focus element
-          focus = true;
+          return ngScrollTo('body');
         }
 
         // check if an element can be found with the selector
@@ -40,10 +36,6 @@ angular.module('nib.scrollTo', [])
             rect.right <= ($window.innerWidth || $window.document.documentElement.clientWidth) /*or $(window).width() */
           );
           if (!inViewPort) {
-            if (focus) {
-              el.focus();
-            }
-
             ngScrollTo(el, offset);
           }
 
