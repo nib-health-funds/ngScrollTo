@@ -83,5 +83,5 @@ angular.module('nib.scrollTo', [])
     }]);
 	
 	if(module && module.exports){
-		module.exports = 'nib.scrollto';
+		module.exports = 'nib.scrollTo';
 	}
